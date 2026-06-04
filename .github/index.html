@@ -1,0 +1,829 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>Rato Bro 😈 Ultimate + Groq</title>
+
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap');
+
+    :root {
+      --accent:  #00ff9d;
+      --accent2: #00ff88;
+      --glow:    #00ffaa;
+      --purple:  #bb86fc;
+      --bg-start:#0a1428;
+      --bg-end:  #1f0038;
+      --chat-bg: rgba(18, 8, 38, 0.65);
+      --user-bubble: linear-gradient(135deg, #004d33, #00b377);
+      --ai-bubble:   linear-gradient(135deg, #3d0066, #6600cc);
+      --text:    #e0e0ff;
+      --sidebar-bg: rgba(8, 4, 22, 0.96);
+    }
+
+    body.theme-normal { --accent:#10b981; --accent2:#34d399; --glow:#6ee7b7; }
+    body.theme-jjk    { --accent:#ff2e63; --accent2:#d6004d; --glow:#ff4d82; }
+    body.theme-opm    { --accent:#fbbf24; --accent2:#f59e0b; --glow:#fcd34d; }
+    body.theme-demon  { --accent:#e63939; --accent2:#f77f00; --glow:#ffd166; }
+    body.theme-tokyo  { --accent:#9b59b6; --accent2:#c44569; --glow:#ff69b4; }
+    body.theme-aot    { --accent:#2a9d8f; --accent2:#e76f51; --glow:#264653; }
+
+    * { margin:0; padding:0; box-sizing:border-box; }
+
+    body {
+      height: 100dvh;
+      background: linear-gradient(135deg, var(--bg-start), var(--bg-end));
+      color: var(--text);
+      font-family: 'Roboto', sans-serif;
+      overflow: hidden;
+    }
+
+    .app { display: flex; height: 100dvh; }
+
+    .sidebar {
+      width: 280px;
+      background: var(--sidebar-bg);
+      border-right: 1px solid rgba(255,255,255,0.08);
+      backdrop-filter: blur(12px);
+      display: flex;
+      flex-direction: column;
+      transition: transform 0.4s cubic-bezier(0.32, 0.72, 0, 1);
+      position: fixed;
+      inset: 0 auto 0 0;
+      z-index: 200;
+      transform: translateX(-100%);
+      color: white;
+      box-shadow: 4px 0 30px rgba(0,0,0,0.4);
+    }
+    .sidebar.open { transform: translateX(0); }
+
+    @media (max-width: 768px) {
+      body { filter: brightness(1.12); }
+      :root { --chat-bg: rgba(32, 20, 58, 0.48) !important; }
+
+      header { padding: 8px 10px !important; gap: 6px; }
+      .menu-btn { font-size: 1.75rem !important; }
+      #headerTitle { font-size: 1.05rem !important; max-width: 160px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+      header > div:last-child { font-size: 1.55rem !important; }
+
+      #input-area { padding: 6px 8px !important; gap: 4px !important; max-width: 100vw; }
+      #userInput { padding: 12px 14px !important; font-size: 1.04rem !important; min-width: 0 !important; }
+      #imageBtn, #roleplayBtn { width: 36px !important; height: 36px !important; font-size: 1.18rem !important; }
+      #sendBtn { width: 46px !important; height: 46px !important; font-size: 1.62rem !important; }
+      
+      #chatbox { overflow-y: scroll !important; touch-action: pan-y !important; padding: 16px 12px !important; }
+      .message { max-width: 88% !important; margin: 12px auto !important; word-break: break-word; }
+    }
+
+    .sidebar-header {
+      padding: 18px 20px;
+      font-size: 1.45rem;
+      font-weight: 700;
+      background: linear-gradient(90deg, var(--accent), var(--accent2));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      border-bottom: 1px solid rgba(255,255,255,0.1);
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .close-sidebar { margin-left: auto; font-size: 2rem; color: var(--purple); cursor: pointer; padding: 4px 10px; }
+
+    .new-chat, .temp-chat {
+      margin: 14px 16px;
+      padding: 14px;
+      border-radius: 12px;
+      text-align: center;
+      cursor: pointer;
+      transition: all 0.2s;
+      font-weight: 600;
+      font-size: 1.02rem;
+    }
+    .new-chat { background: linear-gradient(45deg, var(--accent), var(--accent2)); color: #000; }
+    .temp-chat { background: linear-gradient(45deg, #ff6b00, #ffaa00); color: #000; }
+
+    .chat-list { flex:1; overflow-y:auto; padding: 8px 0; }
+    .chat-item {
+      padding: 14px 20px;
+      margin: 4px 12px;
+      border-radius: 12px;
+      cursor: pointer;
+      transition: all 0.18s;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 1.02rem;
+    }
+    .chat-item:hover, .chat-item.active { background: rgba(255,255,255,0.13); }
+    .delete-btn { color: #ff4d4d; font-size: 1.45rem; opacity: 0.75; cursor: pointer; padding: 0 6px; }
+
+    .main { 
+      flex:1; 
+      display:flex; 
+      flex-direction:column; 
+      position: relative; 
+      min-height: 0; 
+    }
+
+    header {
+      padding: 14px 20px;
+      background: rgba(0,0,0,0.45);
+      backdrop-filter: blur(12px);
+      border-bottom: 1px solid rgba(255,255,255,0.08);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      z-index: 10;
+    }
+
+    .menu-btn { background:none; border:none; font-size:2rem; color:var(--accent); cursor:pointer; padding: 4px; }
+
+    #chatbox {
+      flex:1;
+      padding: 24px 20px;
+      overflow-y: auto;
+      background: var(--chat-bg);
+      backdrop-filter: blur(8px);
+      scroll-behavior: smooth;
+      -webkit-overflow-scrolling: touch; 
+      overscroll-behavior-y: contain;    
+    }
+
+    .message {
+      margin: 18px auto;
+      padding: 15px 20px;
+      border-radius: 20px;
+      max-width: 78%;
+      width: fit-content;
+      line-height: 1.55;
+      font-size: 1.07rem;
+    }
+
+    .user  { background: var(--user-bubble);  margin-left: auto; border-bottom-right-radius: 4px; }
+    .rato { background: var(--ai-bubble); margin-right: auto; border-bottom-left-radius: 4px; }
+
+    .message img {
+      max-width: 100%;
+      border-radius: 16px;
+      margin: 12px 0 6px;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.6);
+    }
+
+    .thinking { opacity: 0.85; font-style: italic; background: rgba(255,255,255,0.08) !important; color: #fff !important; }
+
+    #input-area {
+      padding: 12px 18px;
+      background: rgba(8,4,22,0.97);
+      border-top: 1px solid rgba(255,255,255,0.1);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    #userInput {
+      flex:1;
+      padding: 15px 18px;
+      border-radius: 999px;
+      border: 1px solid rgba(255,255,255,0.18);
+      background: rgba(255,255,255,0.06);
+      color: white;
+      font-size: 1.05rem;
+      outline: none;
+      min-width: 0;
+    }
+
+    #sendBtn, #roleplayBtn, #imageBtn {
+      width: 52px; 
+      height: 52px;
+      border-radius: 50%;
+      color: #000;
+      font-size: 1.55rem;
+      border: none;
+      cursor: pointer;
+      box-shadow: 0 5px 20px rgba(0,255,140,0.45);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+
+    #roleplayBtn { background: linear-gradient(45deg, #bb86fc, #d0aaff); font-size: 1.75rem; }
+    #imageBtn { background: linear-gradient(45deg, #00d4ff, #0099ff); font-size: 1.85rem; box-shadow: 0 5px 20px rgba(0,212,255,0.45); }
+
+    #character {
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      z-index: -1;
+      opacity: 0.09;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .model {
+      width: 280px;
+      height: 280px;
+      object-fit: contain;
+      animation: float 12s infinite ease-in-out;
+      filter: drop-shadow(0 0 60px var(--glow));
+    }
+
+    @keyframes float { 0%,100% { transform: translateY(0) rotateX(4deg); } 50% { transform: translateY(-40px) rotateX(-4deg); } }
+
+    #floatingEmojis { position: absolute; inset: 0; pointer-events: none; z-index: -2; overflow: hidden; }
+    .float-emoji {
+      position: absolute;
+      font-size: 2.5rem;
+      opacity: 0.16;
+      user-select: none;
+      animation: floatEmoji linear infinite;
+    }
+    @keyframes floatEmoji { 0% { transform: translateY(110vh) rotate(0deg); } 100% { transform: translateY(-120px) rotate(720deg); } }
+
+    #modal {
+      display:none;
+      position:fixed; inset:0;
+      background:rgba(0,0,0,0.88);
+      z-index:300;
+      align-items:center; justify-content:center;
+    }
+
+    .modal-content {
+      background: rgba(20,10,40,0.96);
+      border: 2px solid var(--accent);
+      border-radius: 18px;
+      padding: 26px;
+      width: 90%;
+      max-width: 520px;
+      color: white;
+      max-height: 90vh; /* ADDED: Prevents scaling layout breaks on mobile landscape/short screens */
+      overflow-y: auto;
+    }
+
+    .theme-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+      gap: 16px;
+      margin-top: 22px;
+    }
+
+    .theme-card {
+      padding: 16px 10px;
+      border-radius: 16px;
+      text-align: center;
+      cursor: pointer;
+      border: 2px solid transparent;
+      transition: all 0.25s;
+      background-size: cover;
+      background-position: center;
+      aspect-ratio: 1 / 1.05;
+      display: flex;
+      align-items: flex-end;
+      justify-content: center;
+      font-weight: 700;
+      font-size: 1.08rem;
+      color: white;
+      text-shadow: 2px 2px 8px rgba(0,0,0,0.9);
+    }
+    .theme-card:hover { transform: scale(1.06); }
+    .theme-card.selected { border-color: var(--accent); box-shadow: 0 0 25px var(--accent); }
+  </style>
+</head>
+<body class="theme-normal">
+
+<div id="character">
+  <img id="model" class="model" src="https://www.citypng.com/public/uploads/preview/hd-anime-boy-red-hair-png-11668960694q1zq0zq0zq.png">
+</div>
+
+<div id="floatingEmojis"></div>
+
+<div class="app">
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-header">
+      Rato Chats <span id="sidebarEmoji">😈</span>
+      <span class="close-sidebar" onclick="toggleSidebar()">×</span>
+    </div>
+    <div class="new-chat" onclick="newChat()">+ New Permanent Chat</div>
+    <div class="temp-chat" onclick="newTempChat()">🌡️ New Temporary Chat</div>
+    <div class="chat-list" id="chatList"></div>
+  </aside>
+
+  <main class="main">
+    <header>
+      <button class="menu-btn" onclick="toggleSidebar()">☰</button>
+      <div id="headerTitle">RATO BRO 😈 + GROQ</div>
+      <div onclick="showSettings()" style="font-size:1.75rem; cursor:pointer; color:var(--accent);">⚙️</div>
+    </header>
+
+    <div id="chatbox">
+      <div class="message rato">
+        Which language do you know? 🌍🔥
+      </div>
+    </div>
+
+    <div id="input-area">
+      <input id="userInput" type="text" placeholder="Message Rato Bro or describe image..." autocomplete="off" />
+      <button id="imageBtn" onclick="generateImageFromInput()">📸</button>
+      <button id="roleplayBtn" onclick="startRoleplayMode()">🎭</button>
+      <button id="sendBtn" onclick="sendMessage()">➤</button>
+    </div>
+  </main>
+</div>
+
+<div id="modal">
+  <div class="modal-content">
+    <span onclick="hideSettings()" style="float:right; font-size:2.2rem; cursor:pointer;">×</span>
+    <h2 style="text-align:center; margin-bottom:22px; color:var(--accent);">Pick Theme</h2>
+    <div class="theme-grid">
+      <div class="theme-card selected" id="card-normal" onclick="changeTheme('normal')" style="background:linear-gradient(135deg, #003322, #006644);">Normal 😈</div>
+      <div class="theme-card" id="card-jjk" onclick="changeTheme('jjk')" style="background:url('https://images.alphacoders.com/116/1167804.jpg') center/cover;">Jujutsu Kaisen 👀</div>
+      <div class="theme-card" id="card-opm" onclick="changeTheme('opm')" style="background:url('https://images.alphacoders.com/795/795750.jpg') center/cover;">One Punch Man 👊</div>
+      <div class="theme-card" id="card-demon" onclick="changeTheme('demon')" style="background:url('https://images.alphacoders.com/132/1324567.jpg') center/cover;">Demon Slayer 🔥</div>
+      <div class="theme-card" id="card-tokyo" onclick="changeTheme('tokyo')" style="background:url('https://images.alphacoders.com/118/1189123.jpg') center/cover;">Tokyo Revengers 🏍️</div>
+      <div class="theme-card" id="card-aot" onclick="changeTheme('aot')" style="background:url('https://images.alphacoders.com/109/1098765.jpg') center/cover;">Attack on Titan ⚔️</div>
+    </div>
+    <!-- ========== GROQ API KEY SECTION (ADDED) ========== -->
+    <hr style="margin: 25px 0 18px; border-color: rgba(255,255,255,0.2);">
+    <h3 style="color:var(--accent); margin-bottom:8px;">🔑 Groq API Key</h3>
+    <p style="font-size:0.9rem; margin-bottom:10px; opacity:0.85;">Enter your own Groq API key below. It will be saved in your browser.</p>
+    
+    <input type="password" id="groqKeyInput" placeholder="gsk_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx" 
+           style="width:100%; padding:13px 15px; border-radius:10px; border:1px solid rgba(255,255,255,0.25); background:rgba(255,255,255,0.08); color:white; font-family:monospace;">
+    
+    <div style="display:flex; gap:10px; margin-top:12px;">
+      <button onclick="saveGroqKey()" style="flex:1; padding:11px; background:linear-gradient(45deg,var(--accent),var(--accent2)); color:#000; font-weight:700; border:none; border-radius:9px; cursor:pointer;">Save Key</button>
+      <button onclick="clearGroqKey()" style="flex:1; padding:11px; background:rgba(255,80,80,0.15); color:#ff8080; font-weight:600; border:1px solid #ff8080; border-radius:9px; cursor:pointer;">Clear Key</button>
+    </div>
+    
+    <p style="margin-top:12px; font-size:0.85rem;">
+      Get your free Groq API key from: 
+      <a href="https://console.groq.com/keys" target="_blank" style="color:var(--accent); text-decoration:underline;">https://console.groq.com/keys</a>
+    </p>
+    <!-- ========== END GROQ API KEY SECTION ========== -->
+  </div>
+</div>
+
+<script>
+// ────────────────────────────────────────────────
+// 🔥 PUT YOUR GROQ API KEY HERE
+// ────────────────────────────────────────────────
+let GROQ_API_KEY = ' '; 
+if (localStorage.getItem('ratoGroqKey')) GROQ_API_KEY = localStorage.getItem('ratoGroqKey');
+
+const chatbox       = document.getElementById('chatbox');
+const userInput     = document.getElementById('userInput');
+const sidebar       = document.getElementById('sidebar');
+const chatList      = document.getElementById('chatList');
+const modal         = document.getElementById('modal');
+const modelImg      = document.getElementById('model');
+const headerTitle   = document.getElementById('headerTitle');
+const sidebarEmoji  = document.getElementById('sidebarEmoji');
+const floatingEmojis = document.getElementById('floatingEmojis');
+
+let convos       = JSON.parse(localStorage.getItem('ratoConvosV13') || '[]'); 
+let currentId    = localStorage.getItem('ratoCurrentV13') || null;
+let messages     = [];
+let isTempChat   = false;
+let roleplayMode = false;
+let roleplayCharacters = [];
+let currentTheme = localStorage.getItem('ratoTheme') || 'normal';
+let runtimeLanguageMode = 'mix'; // ADDED: Tracks session language style dynamically
+
+function save() {
+  if (isTempChat) return;
+  localStorage.setItem('ratoConvosV13', JSON.stringify(convos));
+  localStorage.setItem('ratoCurrentV13', currentId);
+}
+
+function load(id) {
+  isTempChat = false;
+  currentId = id;
+  const c = convos.find(c => c.id === id);
+  messages = c ? c.messages : [];
+  headerTitle.textContent = c ? c.title : 'New Chat';
+  renderMessages();
+  renderList();
+  save();
+}
+
+function renderMessages() {
+  chatbox.innerHTML = '';
+  messages.forEach(m => {
+    const d = document.createElement('div');
+    d.className = `message ${m.role}`;
+    d.innerHTML = m.content;
+    chatbox.appendChild(d);
+  });
+  chatbox.scrollTop = chatbox.scrollHeight;
+}
+
+function renderList() {
+  chatList.innerHTML = '';
+  convos.forEach(c => {
+    const el = document.createElement('div');
+    el.className = `chat-item ${c.id === currentId ? ' active' : ''}`;
+    el.innerHTML = `<span style="flex:1">${c.title}</span><span class="delete-btn" onclick="event.stopImmediatePropagation(); deleteChat('${c.id}')">×</span>`;
+    el.onclick = () => load(c.id);
+    chatList.appendChild(el);
+  });
+}
+
+function isGreeting(txt) {
+  const lower = txt.toLowerCase().trim();
+  const greetings = ["hi","hello","hey","sup","yo","namaste","k xa","how r u","how are you","k xa dai","ramro xa","thik xa"];
+  return greetings.some(g => lower.includes(g)) && lower.length < 40;
+}
+
+function newChat() {
+  isTempChat = false;
+  currentId = Date.now().toString();
+  messages = [];
+  convos.push({id: currentId, title: 'New Chat', messages: []});
+  headerTitle.textContent = 'New Chat';
+  renderMessages();
+  renderList();
+  save();
+}
+
+function newTempChat() {
+  isTempChat = true;
+  currentId = 'temp-' + Date.now();
+  messages = [];
+  renderMessages();
+  renderList();
+  headerTitle.textContent = '🌡️ TEMPORARY CHAT';
+  addMessage('🌡️ Temporary chat — gone when you close/refresh.', 'rato');
+}
+
+function deleteChat(id) {
+  if (!confirm('Delete this chat?')) return;
+  convos = convos.filter(c => c.id !== id);
+  if (currentId === id && convos.length > 0) currentId = convos[0].id;
+  save();
+  renderList();
+  if (currentId) load(currentId);
+}
+
+function addMessage(txt, who = 'rato') {
+  const msg = {role: who, content: txt};
+  messages.push(msg);
+  const div = document.createElement('div');
+  div.className = `message ${who}`;
+  div.innerHTML = txt;
+  chatbox.appendChild(div);
+  chatbox.scrollTop = chatbox.scrollHeight;
+
+  if (!isTempChat) {
+    const convo = convos.find(c => c.id === currentId);
+    if (convo) {
+      convo.messages = messages;
+      if (convo.title === 'New Chat' && who === 'user') {
+        if (isGreeting(txt)) {
+          convo.title = "Chill Intro 😈";
+          headerTitle.textContent = convo.title;
+          renderList();
+          save();
+        } else {
+          generateTitle(txt).then(title => {
+            convo.title = title;
+            headerTitle.textContent = title;
+            renderList();
+            save();
+          });
+        }
+      } 
+      else if (convo.title === 'Chill Intro 😈' && who === 'user' && !isGreeting(txt)) {
+        generateTitle(txt).then(title => {
+          convo.title = title;
+          headerTitle.textContent = title;
+          renderList();
+          save();
+        });
+      }
+    }
+    save();
+  }
+}
+
+function renameTitle() {
+  if (isTempChat) return;
+  const newTitle = prompt("Enter new chat name:", headerTitle.textContent);
+  if (newTitle && newTitle.trim()) {
+    const convo = convos.find(c => c.id === currentId);
+    if (convo) {
+      convo.title = newTitle.trim();
+      headerTitle.textContent = convo.title;
+      renderList();
+      save();
+    }
+  }
+}
+
+function showThinking(msg = 'Rato Bro is thinking... ⚡') {
+  const d = document.createElement('div');
+  d.className = 'message rato thinking';
+  d.innerHTML = msg;
+  chatbox.appendChild(d);
+  chatbox.scrollTop = chatbox.scrollHeight;
+  return d;
+}
+
+function toggleSidebar() { sidebar.classList.toggle('open'); }
+function showSettings()  { 
+  modal.style.display = 'flex'; 
+  setTimeout(() => {
+    const keyInput = document.getElementById('groqKeyInput');
+    if (keyInput && GROQ_API_KEY && GROQ_API_KEY.length > 10) {
+      keyInput.value = GROQ_API_KEY;
+    }
+  }, 80);
+}
+function hideSettings()  { modal.style.display = 'none'; }
+function saveGroqKey() {
+  const input = document.getElementById('groqKeyInput');
+  if (!input || !input.value.trim()) {
+    alert("Please enter your Groq API key first.");
+    return;
+  }
+  GROQ_API_KEY = input.value.trim();
+  localStorage.setItem('ratoGroqKey', GROQ_API_KEY);
+  alert("✅ Groq API Key saved successfully!");
+}
+
+function clearGroqKey() {
+  if (!confirm("Clear the saved Groq API key?")) return;
+  localStorage.removeItem('ratoGroqKey');
+  GROQ_API_KEY = ' ';
+  const input = document.getElementById('groqKeyInput');
+  if (input) input.value = '';
+  alert("Groq API key cleared.");
+}
+
+function createFloatingEmojis(theme) {
+  floatingEmojis.innerHTML = '';
+  let emojis = ['😈','🔥','💀','⚡'];
+  if (theme === 'jjk') emojis = ['👀','⚡','🌀','🌌'];
+  else if (theme === 'opm') emojis = ['👊','💥','⚡','🏆'];
+  else if (theme === 'demon') emojis = ['🔥','🗡️','🌸','😈'];
+  else if (theme === 'tokyo') emojis = ['🏍️','🔥','🖤','⚡'];
+  else if (theme === 'aot') emojis = ['⚔️','🛡️','🌳','😱'];
+  for (let i = 0; i < 22; i++) {
+    const e = document.createElement('div');
+    e.className = 'float-emoji';
+    e.textContent = emojis[Math.floor(Math.random()*emojis.length)];
+    e.style.left = Math.random() * 100 + 'vw';
+    e.style.animationDuration = (10 + Math.random() * 22) + 's';
+    e.style.animationDelay = '-' + Math.random() * 30 + 's';
+    floatingEmojis.appendChild(e);
+  }
+}
+
+function updateTheme(theme) {
+  currentTheme = theme;
+  document.body.className = `theme-${theme}`;
+  let title = 'RATO BRO', emoji = '😈', src = 'https://www.citypng.com/public/uploads/preview/hd-anime-boy-red-hair-png-11668960694q1zq0zq0zq.png';
+  if (theme === 'jjk') { title = 'RATO JJK'; emoji = '👀'; src = 'https://pngdownload.io/wp-content/uploads/2024/12/gojo-satoru-jujutsu-kaisen-character-png-transparent-powerful-sorcerer-anime-icon-charismatic-teacher.png'; }
+  else if (theme === 'opm') { title = 'RATO OPM'; emoji = '👊'; src = 'https://www.nicepng.com/png/detail/74-744830_saitama-png-serious-saitama-one-punch-man.png'; }
+  else if (theme === 'demon') { title = 'RATO DEMON SLAYER'; emoji = '🔥'; src = 'https://www.pngall.com/wp-content/uploads/5/Tanjiro-Kamado-PNG-Image.png'; }
+  else if (theme === 'tokyo') { title = 'RATO TOKYO REVENGERS'; emoji = '🏍️'; src = 'https://www.pngarts.com/files/3/Tokyo-Revengers-Mikey-PNG-Image.png'; }
+  else if (theme === 'aot') { title = 'RATO AOT'; emoji = '⚔️'; src = 'https://www.pngkey.com/png/full/112-1121454_eren-yeager-attack-on-titan-png.png'; }
+  headerTitle.textContent = title + ' ' + emoji;
+  sidebarEmoji.textContent = emoji;
+  modelImg.src = src;
+  createFloatingEmojis(theme);
+  document.querySelectorAll('.theme-card').forEach(c => c.classList.remove('selected'));
+  document.getElementById('card-' + theme).classList.add('selected');
+}
+
+function changeTheme(t) {
+  roleplayMode = false;
+  updateTheme(t);
+  localStorage.setItem('ratoTheme', t);
+  hideSettings();
+  addMessage(`Theme switched → <b>${t.toUpperCase()}</b> 🔥`, 'rato');
+}
+
+function startRoleplayMode() {
+  roleplayMode = true;
+  roleplayCharacters = [];
+  addMessage(`<b>🎭 Roleplay Mode ON</b><br>Reply with number or names (e.g. Goku & Luffy)`, 'rato');
+}
+
+const presets = {1:["Goku","Luffy"],2:["Elon Musk","Donald Trump"],3:["Narendra Modi","PM Oli"],4:["Gojo","Sukuna"],5:["Tanjiro","Saitama"],6:["Levi","Mikey"],7:["Eren","Mikasa"]};
+
+async function generateImage(prompt) {
+  if (!prompt?.trim()) return;
+
+  const loading = showThinking('Generating image with <b>Flux.1 schnell</b> via Cloudflare... (5–15s) 🖼️');
+
+  try {
+    const cleanPrompt = prompt.trim();
+
+    const response = await fetch("https://api.cloudflare.com/client/v4/accounts/@cf/black-forest-labs/flux-1-schnell", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        prompt: cleanPrompt,
+        num_steps: 4,           
+        guidance: 3.5,
+        width: 896,
+        height: 1152
+      })
+    });
+
+    if (!response.ok) {
+      throw new Error(`Cloudflare error: ${response.status}`);
+    }
+
+    const data = await response.json();
+
+    if (!data.result?.image) {
+      throw new Error("No image returned");
+    }
+
+    const base64 = data.result.image;
+    const imageUrl = `data:image/png;base64,${base64}`;
+
+    loading.remove();
+
+    const html = `
+      <strong>📸 Flux.1 schnell Generated:</strong><br>
+      <em>${cleanPrompt}</em><br>
+      <img src="${imageUrl}" alt="${cleanPrompt.replace(/"/g,'&quot;')}" style="max-width:100%; border-radius:16px; margin:12px 0 6px;"><br>
+      <small>Free Flux via Cloudflare Workers AI • <a href="${imageUrl}" download="rato-image.png" style="color:var(--accent);">Download</a> or long-press to save on mobile</small>
+    `;
+    addMessage(html, 'rato');
+
+  } catch (err) {
+    loading.remove();
+    const fallbackUrl = `https://image.pollinations.ai/prompt/${encodeURIComponent(prompt)}?model=flux&width=896&height=1152&nologo=true&safe=false`;
+    addMessage(`
+      <strong>⚠️ Cloudflare image failed (${err.message})</strong><br>
+      <em>${prompt}</em><br>
+      <a href="${fallbackUrl}" target="_blank" style="color:var(--accent); font-weight:bold;">Tap here to try old Pollinations link →</a><br>
+      <small>Mobile networks sometimes block one endpoint — try Wi-Fi or wait 1 min & retry.</small>
+    `, 'rato');
+  }
+}
+
+function generateImageFromInput() {
+  let txt = userInput.value.trim();
+  if (txt) {
+    addMessage(txt, 'user');
+    generateImage(txt);
+    userInput.value = '';
+  } else {
+    const desc = prompt("Describe the image dai (Flux will generate):");
+    if (desc?.trim()) generateImage(desc.trim());
+  }
+}
+
+async function generateTitle(userText) {
+  const lower = userText.toLowerCase().trim();
+  if (isGreeting(userText) || lower.length < 10) return "Chill Intro 😈";
+
+  if (!GROQ_API_KEY || GROQ_API_KEY.includes('XXXXXXXXXXXXXXXX')) {
+    return userText.slice(0, 35) + (userText.length > 35 ? '…' : '');
+  }
+
+  const system = `Create a super short, catchy title (3-6 words max) for this chat.
+Ignore pure greetings. Focus on topic/content.
+Output ONLY the title.`;
+
+  try {
+    const res = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+      method: "POST",
+      headers: { "Authorization": `Bearer ${GROQ_API_KEY}`, "Content-Type": "application/json" },
+      body: JSON.stringify({
+        model: "llama-3.3-70b-versatile",
+        messages: [{ role: "system", content: system }, { role: "user", content: userText }],
+        temperature: 0.4,
+        max_tokens: 15
+      })
+    });
+    if (!res.ok) throw new Error("Groq error");
+    const data = await res.json();
+    let title = data.choices[0].message.content.trim().replace(/^["']|["']$/g, '');
+    return title || "New Adventure 🔥";
+  } catch (err) {
+    console.error(err);
+    return userText.slice(0, 35) + (userText.length > 35 ? '…' : '') || "New Chat 😈";
+  }
+}
+
+async function sendToGroq(userText) {
+  if (!GROQ_API_KEY || GROQ_API_KEY.includes('XXXXXXXXXXXXXXXX')) {
+    throw new Error("Set your Groq API key first dai.");
+  }
+
+  // MODIFIED: Intercept text string to flag context tracking parameters
+  let cleanLower = userText.toLowerCase().trim();
+  if (cleanLower.includes('english') && (cleanLower.includes('mix') || cleanLower.includes('nep'))) {
+    runtimeLanguageMode = 'english-nep-mix';
+  } else if (cleanLower === 'english') {
+    runtimeLanguageMode = 'english-nep-mix';
+  } else if (cleanLower.includes('nepali')) {
+    runtimeLanguageMode = 'pure-nepali';
+  }
+
+  let system = `You are Rato Bro, cool Nepali AI from Kathmandu. Talk chill desi style ('bro', 'dai', 'k xa', 'bhai').
+If user wants image, reply exactly: [IMAGE_GEN:exact description]`;
+
+  // ADDED: Appends execution constraints depending on detected state machine profile
+  if (runtimeLanguageMode === 'english-nep-mix') {
+    system += `\nCRITICAL: Respond predominantly in English but mix in natural, conversational Kathmandu-style Nepali tags fluidly (e.g., 'ho ni', 'bhanesi', 'k xa', 'bhai', 'dai', 'ni'). Maintain a modern tech-savvy chill vibe.`;
+  } else if (runtimeLanguageMode === 'pure-nepali') {
+    system += `\nCRITICAL: Respond cleanly in high-quality natural Nepali language. Use Devanagari script or clean romanized script depending on how the user communicates.`;
+  }
+
+  if (roleplayMode && roleplayCharacters.length >= 2) {
+    system = `Simulate conversation between ${roleplayCharacters.join(' and ')}. 
+Respond ONLY: Character1: text\nCharacter2: text`;
+  }
+
+  const history = messages.map(m => ({
+    role: m.role === 'user' ? 'user' : 'assistant',
+    content: m.content.replace(/<[^>]+>/g,'')
+  }));
+
+  const res = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+    method: "POST",
+    headers: { "Authorization": `Bearer ${GROQ_API_KEY}`, "Content-Type": "application/json" },
+    body: JSON.stringify({
+      model: "llama-3.3-70b-versatile",
+      messages: [{ role: "system", content: system }, ...history],
+      temperature: 0.85,
+      max_tokens: 900
+    })
+  });
+
+  if (!res.ok) throw new Error("Groq failed");
+  const data = await res.json();
+  return data.choices[0].message.content.trim();
+}
+
+async function sendMessage() {
+  let txt = userInput.value.trim();
+  if (!txt) return;
+
+  if (txt.toLowerCase().startsWith('/image ') || txt.toLowerCase().includes('generate image of')) {
+    const prompt = txt.replace(/\/image |generate image of /i, '').trim();
+    addMessage(txt, 'user');
+    userInput.value = '';
+    generateImage(prompt);
+    return;
+  }
+
+  addMessage(txt, 'user');
+  userInput.value = '';
+  const loading = showThinking();
+
+  try {
+    let reply = await sendToGroq(txt);
+
+    if (reply.includes('[IMAGE_GEN:')) {
+      const prompt = reply.split('[IMAGE_GEN:')[1].split(']')[0].trim();
+      loading.remove();
+      generateImage(prompt);
+      return;
+    }
+
+    loading.remove();
+    addMessage(reply, 'rato');
+  } catch (err) {
+    loading.remove();
+    addMessage(`❌ ${err.message}`, 'rato');
+  }
+}
+
+userInput.addEventListener('keypress', e => {
+  if (e.key === 'Enter') sendMessage();
+});
+
+// ─── Init ───────────────────────────────────────
+updateTheme(currentTheme);
+renderList();
+
+headerTitle.style.cursor = 'pointer';
+headerTitle.title = 'Tap to rename chat';
+headerTitle.onclick = renameTitle;
+
+if (convos.length === 0) {
+  // MODIFIED: Synchronized local initial states to track correctly
+  currentId = Date.now().toString();
+  messages = [{ role: 'rato', content: 'Which language do you know? 🌍🔥' }];
+  convos.push({ id: currentId, title: 'New Chat', messages: messages });
+  renderMessages();
+  renderList();
+  save();
+} else if (currentId) {
+  load(currentId);
+}
+</script>
+</body>
+  </html>
